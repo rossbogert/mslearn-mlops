@@ -65,9 +65,18 @@ jobs:
 
           echo "job_name=$JOB_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Stream prod training job
+      - name: Wait for prod training job
         run: |
-          az ml job stream --name "${{ steps.train.outputs.job_name }}"
+          JOB="${{ steps.train.outputs.job_name }}"
+          while true; do
+            STATUS=$(az ml job show --name "$JOB" --query status -o tsv)
+            echo "Status: $STATUS"
+            case "$STATUS" in
+              Completed) break ;;
+              Failed|Canceled) exit 1 ;;
+            esac
+            sleep 30
+          done
 
       - name: Download prod training outputs
         id: download
